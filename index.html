@@ -4,6 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="description" content="三人共用的演唱會搶票行程與代墊結算工具">
+  <meta name="theme-color" content="#070911">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
   <title>三人搶票帳本</title>
   <style>
     :root{--bg:#070911;--panel:#101522;--panel2:#171d2b;--line:#2a3448;--text:#f8fafc;--muted:#96a3b7;--pink:#fa2c78;--cyan:#66e6f3;--green:#6ee7b7;--danger:#fb7185;--r:18px}
@@ -23,9 +28,10 @@
     .settle{display:grid;grid-template-columns:210px 1fr;gap:20px;padding:20px;border:1px solid #fa4b8b55;border-radius:17px;background:linear-gradient(120deg,#fa2c781f,#00d4eb12);margin-bottom:18px}.settle-title{display:flex;align-items:center;gap:10px}.settle-title i{font-style:normal;font-size:28px}.settle-title small{display:block;color:var(--muted);margin-top:3px}.transfers{display:grid;gap:7px}.transfer{display:grid;grid-template-columns:1fr auto 1fr auto;gap:9px;align-items:center;background:#080a12a8;border-radius:10px;padding:10px 13px}.transfer span{color:var(--muted);font-size:.8rem}.transfer b{color:var(--cyan)}.clear{color:var(--green);display:flex;align-items:center}.debt{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;align-items:center;gap:14px;padding:15px 17px;border:1px solid #242d40;border-radius:13px;background:var(--panel)}.debt p{margin:0;display:flex;gap:7px;flex-wrap:wrap}.debt p span,.debt small{color:var(--muted)}.debt small{display:block;margin-top:4px}.amount{color:var(--cyan)}.paid{opacity:.5}.paid p,.paid .amount{text-decoration:line-through}
     .empty{text-align:center;border:1px dashed #354057;border-radius:17px;padding:48px 20px;color:var(--muted)}.empty i{display:block;font-style:normal;font-size:30px}.empty h3{color:white;margin:10px 0 5px}.empty p{margin:0 0 16px}.checks{display:flex;flex-wrap:wrap;gap:8px}.checks label{display:flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:10px;padding:9px 11px;font-size:.84rem}.checks input{width:16px;min-height:16px;accent-color:var(--pink)}
     dialog{width:min(560px,calc(100% - 28px));max-height:90vh;overflow:auto;border:1px solid #30394d;border-radius:18px;background:#0f1420;color:white;padding:22px;box-shadow:0 30px 90px #000a}dialog::backdrop{background:#0009;backdrop-filter:blur(3px)}dialog h2{margin:0}dialog .desc{color:var(--muted);margin:6px 0 18px;font-size:.88rem}.dialog-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:4px}
+    .import-box{display:grid;grid-template-columns:1fr auto;gap:8px;padding:13px;margin-bottom:18px;border:1px solid #2e3b50;border-radius:13px;background:#0a0f1a}.import-box p{grid-column:1/-1;margin:0;color:var(--cyan);font-size:.82rem;font-weight:750}.import-box small{grid-column:1/-1;color:var(--muted);line-height:1.5}.import-box input{min-width:0}.install-note{margin:12px 0 0;padding:11px 13px;border-radius:11px;background:#172033;color:#cbd5e1;font-size:.82rem;line-height:1.55}
     .toast{position:fixed;left:50%;top:18px;transform:translate(-50%,-20px);z-index:100;background:#182031;border:1px solid #344057;border-radius:11px;padding:11px 15px;box-shadow:0 12px 35px #0008;opacity:0;pointer-events:none;transition:.22s}.toast.show{opacity:1;transform:translate(-50%,0)}.toast.error{border-color:#fb718566;color:#fecdd3}.sync{font-size:.75rem;color:var(--muted);text-align:right;margin-top:10px}
     @media(max-width:720px){.grid3{grid-template-columns:1fr}.topbar{position:static}.invite span{display:none}.dashboard{width:calc(100% - 24px);padding-top:18px}.spotlight{grid-template-columns:1fr}.stats{border-left:0;border-top:1px dashed #ffffff22;grid-template-columns:1fr 1fr}.stats div+div{border-top:0;border-left:1px solid #ffffff14}.event{grid-template-columns:62px 1fr;gap:13px}.date{padding-right:11px}.event-actions{grid-column:2}.settle{grid-template-columns:1fr}.transfer{grid-template-columns:1fr auto 1fr}.transfer b{grid-column:1/-1}.grid2{grid-template-columns:1fr}}
-    @media(max-width:480px){.brand small{display:none}.brand strong{max-width:35vw}.actions .refresh{display:none}.invite{padding:5px 8px}.heading h2{font-size:1.4rem}.heading .btn{padding:7px 10px}.debt{grid-template-columns:auto 1fr auto}.debt .amount{grid-column:2}.debt .delete{grid-column:3}.setup-actions{display:grid}}
+    @media(max-width:480px){.brand small{display:none}.brand strong{max-width:35vw}.actions .refresh{display:none}.invite{padding:5px 8px}.heading h2{font-size:1.4rem}.heading .btn{padding:7px 10px}.debt{grid-template-columns:auto 1fr auto}.debt .amount{grid-column:2}.debt .delete{grid-column:3}.setup-actions{display:grid}.import-box{grid-template-columns:1fr}.import-box p,.import-box small{grid-column:1}}
   </style>
 </head>
 <body>
@@ -106,6 +112,7 @@
   </main>
 
   <dialog id="eventDialog"><h2 id="eventDialogTitle">新增搶票行程</h2><p class="desc">記下開賣時間、分工、提醒與售票連結。</p>
+    <div class="import-box"><p>從售票頁自動帶入</p><input id="ticketImportUrl" type="url" placeholder="貼上拓元、KKTIX、ibon 等售票網址"><button id="importTicketBtn" class="btn" type="button">辨識頁面</button><small id="importStatus">會先填入辨識結果，儲存前仍可修改。</small></div>
     <form id="eventForm">
       <label class="field">演唱會／場次<input name="title" placeholder="例如：周杰倫 台北場" maxlength="60" required></label>
       <div class="grid2"><label class="field">開賣時間<input name="saleAt" type="datetime-local" required></label><label class="field">目標張數<input name="ticketCount" type="number" min="1" max="12" value="3" required></label></div>
@@ -153,17 +160,26 @@
       const key=notificationKey(event,type);if(localStorage.getItem(key))return;
       const at=formatDate(event.saleAt),title=type==="sale"?"搶票時間到了！":"搶票時間即將到！";
       const body=type==="sale"?event.title+" 現在開賣（"+at+"）":event.title+" 將在 "+(event.remindBefore||0)+" 分鐘後開賣";
-      const notice=new Notification(title,{body,tag:key,requireInteraction:type==="sale"});notice.onclick=()=>{window.focus();if(/^https?:\/\//i.test(event.url||""))window.open(event.url,"_blank","noopener");notice.close()};localStorage.setItem(key,"1");
+      navigator.serviceWorker.ready.then(reg=>reg.showNotification(title,{body,tag:key,requireInteraction:type==="sale",icon:"icons/icon-192.png",badge:"icons/icon-192.png",data:{url:event.url||location.href}})).catch(()=>{});localStorage.setItem(key,"1");
     }
     function checkNotifications(){
-      if(!state||!("Notification" in window)||Notification.permission!=="granted")return;const now=Date.now();
+      if(!state||localStorage.getItem("tt_push_enabled")==="1"||!("Notification" in window)||Notification.permission!=="granted")return;const now=Date.now();
       state.events.forEach(event=>{const sale=new Date(event.saleAt).getTime(),lead=Number(event.remindBefore||0)*60000;if(lead>0&&now>=sale-lead&&now<sale)sendNotification(event,"early");if(now>=sale&&now<sale+10*60000)sendNotification(event,"sale")});
     }
     function startNotifications(){clearInterval(notificationTimer);checkNotifications();notificationTimer=setInterval(checkNotifications,15000);updateNotificationButton()}
-    function updateNotificationButton(){const b=$("notificationBtn");if(!b||!("Notification" in window))return;b.textContent=Notification.permission==="granted"?"🔔":"🔕";b.title=Notification.permission==="granted"?"電腦通知已開啟":"按一下開啟電腦通知"}
-    async function requestNotifications(){if(!("Notification" in window))return showToast("此瀏覽器不支援系統通知",true);const permission=await Notification.requestPermission();updateNotificationButton();if(permission==="granted"){startNotifications();showToast("電腦通知已開啟")}else showToast("通知未允許，請在瀏覽器網站設定中開啟",true)}
+    function updateNotificationButton(){const b=$("notificationBtn");if(!b||!("Notification" in window))return;b.textContent=localStorage.getItem("tt_push_enabled")==="1"?"🔔":"🔕";b.title=localStorage.getItem("tt_push_enabled")==="1"?"背景推播已開啟":"按一下開啟跨裝置背景推播"}
+    function base64ToBytes(value){const padding="=".repeat((4-value.length%4)%4),base64=(value+padding).replace(/-/g,"+").replace(/_/g,"/"),raw=atob(base64);return Uint8Array.from([...raw].map(c=>c.charCodeAt(0)))}
+    async function requestNotifications(){
+      if(!("serviceWorker" in navigator)||!("PushManager" in window)||!("Notification" in window))return showToast("此瀏覽器不支援背景推播",true);
+      if(/iPad|iPhone|iPod/.test(navigator.userAgent)&&!window.navigator.standalone){alert("iPhone／iPad 請先用 Safari 的分享按鈕選擇「加入主畫面」，再從主畫面開啟本網站並按鈴鐺。");return}
+      try{const permission=await Notification.requestPermission();if(permission!=="granted")throw new Error("通知未允許，請在瀏覽器網站設定中開啟");showToast("正在啟用背景推播…");const reg=await navigator.serviceWorker.ready,config=await fetch(apiUrl.replace(/\/$/,"")+"/functions/v1/push-notifications",{headers:{apikey:apiKey}}).then(async r=>{const data=await r.json();if(!r.ok)throw new Error(data.error||"尚未部署推播服務");return data});let sub=await reg.pushManager.getSubscription();if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:base64ToBytes(config.publicKey)});const subscription=sub.toJSON();subscription.appUrl=location.origin+location.pathname+"?room="+roomCode;subscription.userAgent=navigator.userAgent;await rpc("subscribe_ticket_push",{p_code:roomCode,p_pin:roomPin,p_subscription:subscription});localStorage.setItem("tt_push_enabled","1");updateNotificationButton();showToast("跨裝置背景推播已開啟")}catch(x){localStorage.removeItem("tt_push_enabled");updateNotificationButton();showToast(x.message||"無法開啟推播",true)}
+    }
+    async function importTicketPage(){
+      const input=$("ticketImportUrl"),button=$("importTicketBtn"),status=$("importStatus"),url=input.value.trim();if(!url)return showToast("請先貼上售票網址",true);button.disabled=true;button.textContent="辨識中…";status.textContent="正在讀取售票頁…";
+      try{const response=await fetch(apiUrl.replace(/\/$/,"")+"/functions/v1/ticket-import",{method:"POST",headers:{"Content-Type":"application/json","apikey":apiKey,"X-Ticket-Room":roomCode,"X-Ticket-Pin":roomPin},body:JSON.stringify({url})}),data=await response.json();if(!response.ok)throw new Error(data.error||"無法辨識此頁面");const form=$("eventForm");if(data.title)form.elements.title.value=data.title;if(data.platform)form.elements.platform.value=data.platform;form.elements.url.value=data.url||url;if(data.saleAt)form.elements.saleAt.value=new Date(new Date(data.saleAt).getTime()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16);status.textContent=data.saleAt?"已帶入名稱、平台與開賣時間，請確認後儲存。":"已帶入名稱與平台；這個頁面沒有明確標示開賣時間，請手動填寫。";showToast("售票頁辨識完成")}catch(x){status.textContent=x.message;showToast(x.message,true)}finally{button.disabled=false;button.textContent="辨識頁面"}
+    }
     function openEventDialog(event=null){
-      editingEventId=event&&event.id||null;const form=$("eventForm");form.reset();$("eventDialogTitle").textContent=event?"編輯搶票行程":"新增搶票行程";fillAssigneeChecks(event&&event.assignees);
+      editingEventId=event&&event.id||null;const form=$("eventForm");form.reset();$("ticketImportUrl").value="";$("importStatus").textContent="會先填入辨識結果，儲存前仍可修改。";$("eventDialogTitle").textContent=event?"編輯搶票行程":"新增搶票行程";fillAssigneeChecks(event&&event.assignees);
       if(event){form.elements.title.value=event.title||"";form.elements.saleAt.value=new Date(new Date(event.saleAt).getTime()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16);form.elements.ticketCount.value=event.ticketCount||3;form.elements.platform.value=event.platform||"";form.elements.url.value=event.url||"";form.elements.remindBefore.value=String(event.remindBefore??10);form.elements.note.value=event.note||""}
       $("eventDialog").showModal();
     }
@@ -237,7 +253,7 @@
     $("appView").onclick=async e=>{const b=e.target.closest("[data-action]");if(!b)return;const a=b.dataset.action,id=b.dataset.id;if(a==="open-event")openEventDialog();if(a==="edit-event")openEventDialog(state.events.find(x=>x.id===id));if(a==="open-debt")$("debtDialog").showModal();if(a==="delete-event"&&confirm("確定刪除這個搶票行程？"))try{await mutate("delete_event",{id});showToast("行程已刪除")}catch(x){showToast(x.message,true)}if(a==="delete-debt"&&confirm("確定刪除這筆代墊紀錄？"))try{await mutate("delete_debt",{id});showToast("紀錄已刪除")}catch(x){showToast(x.message,true)}};
     $("appView").onchange=async e=>{if(e.target.dataset.action==="toggle-debt")try{await mutate("toggle_debt",{id:e.target.dataset.id,settled:e.target.checked});showToast(e.target.checked?"已標記為付清":"已改為未付款")}catch(x){showToast(x.message,true)}};
     document.querySelectorAll("[data-close]").forEach(b=>b.onclick=()=>$(b.dataset.close).close());
-    $("addEventBtn").onclick=()=>openEventDialog();$("addDebtBtn").onclick=()=>$("debtDialog").showModal();$("settingsBtn").onclick=()=>$("settingsDialog").showModal();$("notificationBtn").onclick=requestNotifications;$("refreshBtn").onclick=()=>refresh();$("scheduleTab").onclick=()=>switchPanel("schedule");$("moneyTab").onclick=()=>switchPanel("money");
+    $("addEventBtn").onclick=()=>openEventDialog();$("importTicketBtn").onclick=importTicketPage;$("addDebtBtn").onclick=()=>$("debtDialog").showModal();$("settingsBtn").onclick=()=>$("settingsDialog").showModal();$("notificationBtn").onclick=requestNotifications;$("refreshBtn").onclick=()=>refresh();$("scheduleTab").onclick=()=>switchPanel("schedule");$("moneyTab").onclick=()=>switchPanel("money");
     $("copyInvite").onclick=()=>navigator.clipboard.writeText(location.origin+location.pathname+"?room="+roomCode+"\n邀請碼："+roomCode).then(()=>showToast("邀請連結已複製"));
     $("leaveBtn").onclick=()=>{if(!confirm("要從這台裝置移除已記住的邀請碼與密碼嗎？"))return;localStorage.removeItem("tt_room");localStorage.removeItem("tt_pin_"+roomCode);location.href=location.pathname};
 
@@ -245,7 +261,7 @@
     $("configForm").onsubmit=async e=>{e.preventDefault();const url=$("configUrl").value.trim().replace(/\/$/,""),key=$("configKey").value.trim();if(!/^https:\/\/.+\.supabase\.co$/.test(url))return showToast("Project URL 格式不正確",true);if(!(key.startsWith("sb_publishable_")||key.startsWith("eyJ")))return showToast("請填入 Publishable key",true);try{let source=await fetch(location.href.split("?")[0],{cache:"no-store"}).then(r=>r.text());const mu="%%"+"SUPABASE_URL"+"%%",mk="%%"+"SUPABASE_PUBLISHABLE_KEY"+"%%";source=source.split(mu).join(url).split(mk).join(key);const blob=new Blob([source],{type:"text/html;charset=utf-8"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="index.html";a.click();URL.revokeObjectURL(a.href);showToast("已下載設定完成的 index.html");}catch(x){showToast("請先把檔案放到 GitHub Pages，再使用下載功能",true)}};
 
     (async function init(){
-      updateNotificationButton();const configured=apiUrl&&apiKey;
+      if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});updateNotificationButton();const configured=apiUrl&&apiKey;
       if(!configured){$("setupView").classList.remove("hidden");return}
       $("entryView").classList.remove("hidden");
       const query=new URLSearchParams(location.search).get("room");if(query)roomCode=query.toUpperCase();
