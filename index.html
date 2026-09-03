@@ -50,7 +50,7 @@
       <form id="configForm">
         <label class="field">Project URL<input id="configUrl" type="url" placeholder="https://xxxxx.supabase.co" required></label>
         <label class="field">Publishable key<input id="configKey" placeholder="sb_publishable_..." required></label>
-        <p class="note"><strong>不要填 Secret key 或 service_role key。</strong>Publishable key 本來就可放在網頁中，實際資料仍由邀請碼與密碼保護。</p>
+        <p class="note"><strong>不要填 Secret key 或 service_role key。</strong>Publishable key 本來就可放在網頁中，帳本以邀請碼識別。</p>
         <div class="setup-actions">
           <button class="btn" type="button" id="testConfig">測試連線</button>
           <button class="btn hot" type="submit">下載已設定的 index.html</button>
@@ -66,7 +66,6 @@
       <div class="tabs"><button id="joinTab" class="active">加入群組</button><button id="createTab">建立新群組</button></div>
       <form id="joinForm">
         <label class="field">邀請碼<input name="code" maxlength="6" placeholder="例如 A82F1C" required></label>
-        <label class="field">共用密碼<input name="pin" type="password" inputmode="numeric" pattern="[0-9]{6,8}" placeholder="6–8 位數字" required></label>
         <button class="btn hot wide">開啟帳本</button>
       </form>
       <form id="createForm" class="hidden">
@@ -76,7 +75,6 @@
           <label class="field">成員 2<input name="member2" value="朋友 A" maxlength="12" required></label>
           <label class="field">成員 3<input name="member3" value="朋友 B" maxlength="12" required></label>
         </div>
-        <label class="field">設定共用密碼<input name="pin" type="password" inputmode="numeric" pattern="[0-9]{6,8}" placeholder="6–8 位數字" required></label>
         <button class="btn hot wide">建立三人帳本</button>
       </form>
     </section>
@@ -146,7 +144,7 @@
     const EMBEDDED_KEY = "sb_publishable_hgxM-twdEVzZRztE78Tpqw_rqMnwVL2";
     let apiUrl = EMBEDDED_URL.startsWith("https://") ? EMBEDDED_URL : localStorage.getItem("tt_supabase_url") || "";
     let apiKey = EMBEDDED_KEY.startsWith("sb_") || EMBEDDED_KEY.startsWith("eyJ") ? EMBEDDED_KEY : localStorage.getItem("tt_supabase_key") || "";
-    let state = null, roomCode = localStorage.getItem("tt_room") || "", roomPin = localStorage.getItem("tt_pin_" + roomCode) || "", activePanel = "schedule", poller = null, notificationTimer = null, editingEventId = null;
+    let state = null, roomCode = localStorage.getItem("tt_room") || "", roomPin = "000000", activePanel = "schedule", poller = null, notificationTimer = null, editingEventId = null;
     const $ = (id) => document.getElementById(id);
     const esc = (v="") => String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
     const money = new Intl.NumberFormat("zh-TW",{style:"currency",currency:"TWD",maximumFractionDigits:0});
@@ -182,7 +180,7 @@
     async function rpc(name,args,url=apiUrl,key=apiKey){
       const response=await fetch(url.replace(/\/$/,"")+"/rest/v1/rpc/"+name,{method:"POST",headers:{"Content-Type":"application/json","apikey":key},body:JSON.stringify(args)});
       const data=await response.json().catch(()=>({}));
-      if(!response.ok) throw new Error(data.message||data.error||"連線失敗");
+      if(!response.ok){const message=data.message||data.error||"連線失敗";throw new Error(message.replace("邀請碼或密碼不正確","邀請碼不正確"));}
       return data;
     }
     function switchEntry(mode){
@@ -240,8 +238,8 @@
     function switchPanel(panel){activePanel=panel;const schedule=panel==="schedule";$("scheduleTab").classList.toggle("active",schedule);$("moneyTab").classList.toggle("active",!schedule);$("schedulePanel").classList.toggle("hidden",!schedule);$("moneyPanel").classList.toggle("hidden",schedule);}
 
     $("joinTab").onclick=()=>switchEntry("join");$("createTab").onclick=()=>switchEntry("create");
-    $("joinForm").onsubmit=async e=>{e.preventDefault();busy(e.target,true);try{const f=new FormData(e.target);roomCode=String(f.get("code")).trim().toUpperCase();roomPin=String(f.get("pin"));const data=await rpc("get_ticket_room",{p_code:roomCode,p_pin:roomPin});localStorage.setItem("tt_room",roomCode);localStorage.setItem("tt_pin_"+roomCode,roomPin);history.replaceState({},"","?room="+roomCode);enterApp(data);}catch(x){showToast(x.message,true)}finally{busy(e.target,false)}};
-    $("createForm").onsubmit=async e=>{e.preventDefault();busy(e.target,true);try{const f=new FormData(e.target),pin=String(f.get("pin")),members=[f.get("member1"),f.get("member2"),f.get("member3")];const data=await rpc("create_ticket_room",{p_room_name:f.get("roomName"),p_members:members,p_pin:pin});roomCode=data.room.code;roomPin=pin;localStorage.setItem("tt_room",roomCode);localStorage.setItem("tt_pin_"+roomCode,roomPin);history.replaceState({},"","?room="+roomCode);enterApp(data);showToast("群組已建立，分享邀請碼與密碼即可一起使用");}catch(x){showToast(x.message,true)}finally{busy(e.target,false)}};
+    $("joinForm").onsubmit=async e=>{e.preventDefault();busy(e.target,true);try{const f=new FormData(e.target);roomCode=String(f.get("code")).trim().toUpperCase();const data=await rpc("get_ticket_room",{p_code:roomCode,p_pin:roomPin});localStorage.setItem("tt_room",roomCode);history.replaceState({},"","?room="+roomCode);enterApp(data);}catch(x){showToast(x.message,true)}finally{busy(e.target,false)}};
+    $("createForm").onsubmit=async e=>{e.preventDefault();busy(e.target,true);try{const f=new FormData(e.target),members=[f.get("member1"),f.get("member2"),f.get("member3")];const data=await rpc("create_ticket_room",{p_room_name:f.get("roomName"),p_members:members,p_pin:roomPin});roomCode=data.room.code;localStorage.setItem("tt_room",roomCode);history.replaceState({},"","?room="+roomCode);enterApp(data);showToast("群組已建立，分享邀請碼即可一起使用");}catch(x){showToast(x.message,true)}finally{busy(e.target,false)}};
     $("eventForm").onsubmit=async e=>{e.preventDefault();busy(e.target,true);try{const f=new FormData(e.target),assignees=[...e.target.querySelectorAll('[name=assignee]:checked')].map(x=>Number(x.value)),editing=editingEventId;await mutate(editing?"update_event":"save_event",{id:editing,title:f.get("title"),saleAt:new Date(f.get("saleAt")).toISOString(),platform:f.get("platform"),url:f.get("url"),ticketCount:Number(f.get("ticketCount")),remindBefore:Number(f.get("remindBefore")),assignees,note:f.get("note")});e.target.reset();editingEventId=null;$("eventDialog").close();startNotifications();showToast(editing?"搶票行程已更新":"搶票行程已新增");}catch(x){showToast(x.message,true)}finally{busy(e.target,false)}};
     $("debtForm").onsubmit=async e=>{e.preventDefault();busy(e.target,true);try{const f=new FormData(e.target),debtor=Number(f.get("debtor")),creditor=Number(f.get("creditor"));if(debtor===creditor)throw new Error("欠款人與代墊人不能相同");await mutate("save_debt",{debtorIndex:debtor,creditorIndex:creditor,amount:Number(f.get("amount")),eventId:f.get("eventId")||null,note:f.get("note")});e.target.reset();$("debtDialog").close();showToast("代墊紀錄已新增");}catch(x){showToast(x.message,true)}finally{busy(e.target,false)}};
     $("settingsForm").onsubmit=async e=>{e.preventDefault();busy(e.target,true);try{const f=new FormData(e.target);await mutate("update_room",{roomName:f.get("roomName"),members:[f.get("member1"),f.get("member2"),f.get("member3")]});$("settingsDialog").close();showToast("群組資料已更新");}catch(x){showToast(x.message,true)}finally{busy(e.target,false)}};
@@ -250,9 +248,9 @@
     document.querySelectorAll("[data-close]").forEach(b=>b.onclick=()=>$(b.dataset.close).close());
     $("addEventBtn").onclick=()=>openEventDialog();$("addDebtBtn").onclick=()=>$("debtDialog").showModal();$("settingsBtn").onclick=()=>$("settingsDialog").showModal();$("notificationBtn").onclick=requestNotifications;$("refreshBtn").onclick=()=>refresh();$("scheduleTab").onclick=()=>switchPanel("schedule");$("moneyTab").onclick=()=>switchPanel("money");
     $("copyInvite").onclick=()=>navigator.clipboard.writeText(location.origin+location.pathname+"?room="+roomCode+"\n邀請碼："+roomCode).then(()=>showToast("邀請連結已複製"));
-    $("leaveBtn").onclick=()=>{if(!confirm("要從這台裝置移除已記住的邀請碼與密碼嗎？"))return;localStorage.removeItem("tt_room");localStorage.removeItem("tt_pin_"+roomCode);location.href=location.pathname};
+    $("leaveBtn").onclick=()=>{if(!confirm("要從這台裝置移除已記住的邀請碼嗎？"))return;localStorage.removeItem("tt_room");location.href=location.pathname};
 
-    $("testConfig").onclick=async()=>{const url=$("configUrl").value.trim(),key=$("configKey").value.trim();try{await rpc("get_ticket_room",{p_code:"TEST00",p_pin:"000000"},url,key)}catch(e){if(/邀請碼|密碼/.test(e.message)){localStorage.setItem("tt_supabase_url",url);localStorage.setItem("tt_supabase_key",key);showToast("連線成功");return}showToast("尚未連線："+e.message,true)}};
+    $("testConfig").onclick=async()=>{const url=$("configUrl").value.trim(),key=$("configKey").value.trim();try{await rpc("get_ticket_room",{p_code:"TEST00",p_pin:roomPin},url,key)}catch(e){if(/邀請碼/.test(e.message)){localStorage.setItem("tt_supabase_url",url);localStorage.setItem("tt_supabase_key",key);showToast("連線成功");return}showToast("尚未連線："+e.message,true)}};
     $("configForm").onsubmit=async e=>{e.preventDefault();const url=$("configUrl").value.trim().replace(/\/$/,""),key=$("configKey").value.trim();if(!/^https:\/\/.+\.supabase\.co$/.test(url))return showToast("Project URL 格式不正確",true);if(!(key.startsWith("sb_publishable_")||key.startsWith("eyJ")))return showToast("請填入 Publishable key",true);try{let source=await fetch(location.href.split("?")[0],{cache:"no-store"}).then(r=>r.text());const mu="%%"+"SUPABASE_URL"+"%%",mk="%%"+"SUPABASE_PUBLISHABLE_KEY"+"%%";source=source.split(mu).join(url).split(mk).join(key);const blob=new Blob([source],{type:"text/html;charset=utf-8"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="index.html";a.click();URL.revokeObjectURL(a.href);showToast("已下載設定完成的 index.html");}catch(x){showToast("請先把檔案放到 GitHub Pages，再使用下載功能",true)}};
 
     (async function init(){
@@ -260,7 +258,8 @@
       if(!configured){$("setupView").classList.remove("hidden");return}
       $("entryView").classList.remove("hidden");
       const query=new URLSearchParams(location.search).get("room");if(query)roomCode=query.toUpperCase();
-      if(roomCode){$("joinForm").elements.code.value=roomCode;const saved=localStorage.getItem("tt_pin_"+roomCode);if(saved){roomPin=saved;try{enterApp(await rpc("get_ticket_room",{p_code:roomCode,p_pin:roomPin}))}catch{}}}
+      Object.keys(localStorage).filter(key=>key.startsWith("tt_pin_")).forEach(key=>localStorage.removeItem(key));
+      if(roomCode){$("joinForm").elements.code.value=roomCode;try{enterApp(await rpc("get_ticket_room",{p_code:roomCode,p_pin:roomPin}))}catch{}}
     })();
   </script>
 </body>
