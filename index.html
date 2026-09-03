@@ -134,8 +134,8 @@
   </dialog>
 
   <script>
-    const EMBEDDED_URL = "%%SUPABASE_URL%%";
-    const EMBEDDED_KEY = "%%SUPABASE_PUBLISHABLE_KEY%%";
+    const EMBEDDED_URL = "https://iykqldpzciqelmrjzlng.supabase.co";
+    const EMBEDDED_KEY = "sb_publishable_hgxM-twdEVzZRztE78Tpqw_rqMnwVL2";
     let apiUrl = EMBEDDED_URL.startsWith("https://") ? EMBEDDED_URL : localStorage.getItem("tt_supabase_url") || "";
     let apiKey = EMBEDDED_KEY.startsWith("sb_") || EMBEDDED_KEY.startsWith("eyJ") ? EMBEDDED_KEY : localStorage.getItem("tt_supabase_key") || "";
     let state = null, roomCode = localStorage.getItem("tt_room") || "", roomPin = localStorage.getItem("tt_pin_" + roomCode) || "", activePanel = "schedule", poller = null;
