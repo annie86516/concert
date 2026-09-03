@@ -81,6 +81,7 @@
       <div class="brand"><span class="mini">🎫</span><div><small>TRIO TICKET CLUB</small><strong id="groupTitle"></strong></div></div>
       <div class="actions">
         <button id="copyInvite" class="invite"><span>邀請碼</span><b id="inviteCode"></b>　⧉</button>
+        <button id="notificationBtn" class="btn icon" title="開啟電腦通知">🔔</button>
         <button id="refreshBtn" class="btn icon refresh" title="重新整理">↻</button>
         <button id="settingsBtn" class="btn icon" title="群組設定">⚙</button>
       </div>
@@ -104,11 +105,12 @@
     </div>
   </main>
 
-  <dialog id="eventDialog"><h2>新增搶票行程</h2><p class="desc">記下開賣時間、分工與售票連結。</p>
+  <dialog id="eventDialog"><h2 id="eventDialogTitle">新增搶票行程</h2><p class="desc">記下開賣時間、分工、提醒與售票連結。</p>
     <form id="eventForm">
       <label class="field">演唱會／場次<input name="title" placeholder="例如：周杰倫 台北場" maxlength="60" required></label>
       <div class="grid2"><label class="field">開賣時間<input name="saleAt" type="datetime-local" required></label><label class="field">目標張數<input name="ticketCount" type="number" min="1" max="12" value="3" required></label></div>
       <div class="grid2"><label class="field">售票平台<input name="platform" placeholder="拓元、KKTIX…" maxlength="30"></label><label class="field">售票網址<input name="url" type="url" placeholder="https://"></label></div>
+      <label class="field">提前通知<select name="remindBefore"><option value="0">開賣時間到時</option><option value="5">提前 5 分鐘</option><option value="10" selected>提前 10 分鐘</option><option value="15">提前 15 分鐘</option><option value="30">提前 30 分鐘</option><option value="60">提前 1 小時</option><option value="1440">提前 1 天</option></select></label>
       <div class="field">誰要搶<div id="assigneeChecks" class="checks"></div></div>
       <label class="field">備註<textarea name="note" maxlength="300" placeholder="預算、區域、張數分工…"></textarea></label>
       <div class="dialog-actions"><button class="btn" type="button" data-close="eventDialog">取消</button><button class="btn hot">儲存行程</button></div>
@@ -138,12 +140,33 @@
     const EMBEDDED_KEY = "sb_publishable_hgxM-twdEVzZRztE78Tpqw_rqMnwVL2";
     let apiUrl = EMBEDDED_URL.startsWith("https://") ? EMBEDDED_URL : localStorage.getItem("tt_supabase_url") || "";
     let apiKey = EMBEDDED_KEY.startsWith("sb_") || EMBEDDED_KEY.startsWith("eyJ") ? EMBEDDED_KEY : localStorage.getItem("tt_supabase_key") || "";
-    let state = null, roomCode = localStorage.getItem("tt_room") || "", roomPin = localStorage.getItem("tt_pin_" + roomCode) || "", activePanel = "schedule", poller = null;
+    let state = null, roomCode = localStorage.getItem("tt_room") || "", roomPin = localStorage.getItem("tt_pin_" + roomCode) || "", activePanel = "schedule", poller = null, notificationTimer = null, editingEventId = null;
     const $ = (id) => document.getElementById(id);
     const esc = (v="") => String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
     const money = new Intl.NumberFormat("zh-TW",{style:"currency",currency:"TWD",maximumFractionDigits:0});
     const showToast = (message,error=false) => { const el=$("toast"); el.textContent=message; el.className="toast show"+(error?" error":""); clearTimeout(el.timer); el.timer=setTimeout(()=>el.className="toast",2600); };
     const busy = (form,on) => { const b=form.querySelector('button[type="submit"],button:not([type])'); if(b){b.disabled=on;b.dataset.old=b.dataset.old||b.textContent;b.textContent=on?"處理中…":b.dataset.old;} };
+
+    function notificationKey(event,type){return "tt_notice_"+roomCode+"_"+event.id+"_"+type+"_"+event.saleAt+"_"+(event.remindBefore||0)}
+    function sendNotification(event,type){
+      if(!("Notification" in window)||Notification.permission!=="granted")return;
+      const key=notificationKey(event,type);if(localStorage.getItem(key))return;
+      const at=formatDate(event.saleAt),title=type==="sale"?"搶票時間到了！":"搶票時間即將到！";
+      const body=type==="sale"?event.title+" 現在開賣（"+at+"）":event.title+" 將在 "+(event.remindBefore||0)+" 分鐘後開賣";
+      const notice=new Notification(title,{body,tag:key,requireInteraction:type==="sale"});notice.onclick=()=>{window.focus();if(/^https?:\/\//i.test(event.url||""))window.open(event.url,"_blank","noopener");notice.close()};localStorage.setItem(key,"1");
+    }
+    function checkNotifications(){
+      if(!state||!("Notification" in window)||Notification.permission!=="granted")return;const now=Date.now();
+      state.events.forEach(event=>{const sale=new Date(event.saleAt).getTime(),lead=Number(event.remindBefore||0)*60000;if(lead>0&&now>=sale-lead&&now<sale)sendNotification(event,"early");if(now>=sale&&now<sale+10*60000)sendNotification(event,"sale")});
+    }
+    function startNotifications(){clearInterval(notificationTimer);checkNotifications();notificationTimer=setInterval(checkNotifications,15000);updateNotificationButton()}
+    function updateNotificationButton(){const b=$("notificationBtn");if(!b||!("Notification" in window))return;b.textContent=Notification.permission==="granted"?"🔔":"🔕";b.title=Notification.permission==="granted"?"電腦通知已開啟":"按一下開啟電腦通知"}
+    async function requestNotifications(){if(!("Notification" in window))return showToast("此瀏覽器不支援系統通知",true);const permission=await Notification.requestPermission();updateNotificationButton();if(permission==="granted"){startNotifications();showToast("電腦通知已開啟")}else showToast("通知未允許，請在瀏覽器網站設定中開啟",true)}
+    function openEventDialog(event=null){
+      editingEventId=event&&event.id||null;const form=$("eventForm");form.reset();$("eventDialogTitle").textContent=event?"編輯搶票行程":"新增搶票行程";fillAssigneeChecks(event&&event.assignees);
+      if(event){form.elements.title.value=event.title||"";form.elements.saleAt.value=new Date(new Date(event.saleAt).getTime()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16);form.elements.ticketCount.value=event.ticketCount||3;form.elements.platform.value=event.platform||"";form.elements.url.value=event.url||"";form.elements.remindBefore.value=String(event.remindBefore??10);form.elements.note.value=event.note||""}
+      $("eventDialog").showModal();
+    }
 
     async function rpc(name,args,url=apiUrl,key=apiKey){
       const response=await fetch(url.replace(/\/$/,"")+"/rest/v1/rpc/"+name,{method:"POST",headers:{"Content-Type":"application/json","apikey":key},body:JSON.stringify(args)});
@@ -155,7 +178,7 @@
       const join=mode==="join"; $("joinTab").classList.toggle("active",join);$("createTab").classList.toggle("active",!join);$("joinForm").classList.toggle("hidden",!join);$("createForm").classList.toggle("hidden",join);
     }
     function enterApp(data){
-      state=data;$("entryView").classList.add("hidden");$("appView").classList.remove("hidden");render();clearInterval(poller);poller=setInterval(()=>refresh(true),15000);
+      state=data;$("entryView").classList.add("hidden");$("appView").classList.remove("hidden");render();clearInterval(poller);poller=setInterval(()=>refresh(true),15000);startNotifications();
     }
     async function refresh(silent=false){
       try{const data=await rpc("get_ticket_room",{p_code:roomCode,p_pin:roomPin});state=data;render();if(!silent)showToast("已同步最新資料");}
@@ -186,7 +209,8 @@
       $("outstanding").textContent=money.format(state.debts.filter(d=>!d.settled).reduce((s,d)=>s+d.amount,0));
       $("eventList").innerHTML=state.events.length?[...state.events].sort((a,b)=>new Date(a.saleAt)-new Date(b.saleAt)).map(e=>{
         const date=new Date(e.saleAt),past=date<now,safe=/^https?:\/\//i.test(e.url||"")?e.url:"";
-        return '<article class="event"><div class="date"><em>'+esc(new Intl.DateTimeFormat("zh-TW",{month:"short",timeZone:"Asia/Taipei"}).format(date))+'</em><b>'+esc(new Intl.DateTimeFormat("zh-TW",{day:"2-digit",timeZone:"Asia/Taipei"}).format(date))+'</b><small>'+esc(new Intl.DateTimeFormat("zh-TW",{hour:"2-digit",minute:"2-digit",hour12:false,timeZone:"Asia/Taipei"}).format(date))+'</small></div><div><h3>'+esc(e.title)+'<span class="badge '+(past?"past":"")+'">'+(past?"已開賣":"待搶")+'</span></h3><p class="meta">'+esc(e.platform||"售票平台未填")+' · 目標 '+esc(e.ticketCount)+' 張</p><div class="pills">'+e.assignees.map(i=>'<span class="pill">♙ '+esc(members[i])+'</span>').join("")+'</div>'+(e.note?'<p class="event-note">'+esc(e.note)+'</p>':"")+'</div><div class="event-actions">'+(safe?'<a class="btn" href="'+esc(safe)+'" target="_blank" rel="noreferrer">售票頁 ↗</a>':"")+' <button class="btn ghost danger" data-action="delete-event" data-id="'+esc(e.id)+'">刪除</button></div></article>';
+        const reminder=Number(e.remindBefore||0)?" · 提前 "+(Number(e.remindBefore)===1440?"1 天":e.remindBefore+" 分鐘")+"通知":" · 開賣時通知";
+        return '<article class="event"><div class="date"><em>'+esc(new Intl.DateTimeFormat("zh-TW",{month:"short",timeZone:"Asia/Taipei"}).format(date))+'</em><b>'+esc(new Intl.DateTimeFormat("zh-TW",{day:"2-digit",timeZone:"Asia/Taipei"}).format(date))+'</b><small>'+esc(new Intl.DateTimeFormat("zh-TW",{hour:"2-digit",minute:"2-digit",hour12:false,timeZone:"Asia/Taipei"}).format(date))+'</small></div><div><h3>'+esc(e.title)+'<span class="badge '+(past?"past":"")+'">'+(past?"已開賣":"待搶")+'</span></h3><p class="meta">'+esc(e.platform||"售票平台未填")+' · 目標 '+esc(e.ticketCount)+' 張'+esc(reminder)+'</p><div class="pills">'+e.assignees.map(i=>'<span class="pill">♙ '+esc(members[i])+'</span>').join("")+'</div>'+(e.note?'<p class="event-note">'+esc(e.note)+'</p>':"")+'</div><div class="event-actions">'+(safe?'<a class="btn" href="'+esc(safe)+'" target="_blank" rel="noreferrer">售票頁 ↗</a>':"")+' <button class="btn ghost" data-action="edit-event" data-id="'+esc(e.id)+'">編輯</button> <button class="btn ghost danger" data-action="delete-event" data-id="'+esc(e.id)+'">刪除</button></div></article>';
       }).join(""):'<div class="empty"><i>▣</i><h3>還沒有搶票行程</h3><p>先把第一場演唱會與開賣時間記下來。</p><button class="btn" data-action="open-event">新增第一場</button></div>';
       const transfers=calculateSettlement();
       $("settlement").innerHTML=transfers.length?'<div class="transfers">'+transfers.map(t=>'<div class="transfer"><strong>'+esc(members[t.from])+'</strong><span>付給</span><strong>'+esc(members[t.to])+'</strong><b>'+money.format(t.amount)+'</b></div>').join("")+'</div>':'<div class="clear">✓　目前沒有未結清款項</div>';
@@ -198,21 +222,22 @@
       const options=state.room.members.map((m,i)=>'<option value="'+i+'">'+esc(m)+'</option>').join("");
       $("debtForm").elements.debtor.innerHTML=options;$("debtForm").elements.creditor.innerHTML=options;$("debtForm").elements.debtor.value="1";$("debtForm").elements.creditor.value="0";
       $("debtForm").elements.eventId.innerHTML='<option value="">不指定場次</option>'+state.events.map(e=>'<option value="'+esc(e.id)+'">'+esc(e.title)+'</option>').join("");
-      $("assigneeChecks").innerHTML=state.room.members.map((m,i)=>'<label><input type="checkbox" name="assignee" value="'+i+'" checked>'+esc(m)+'</label>').join("");
+      fillAssigneeChecks();
       const f=$("settingsForm");f.elements.roomName.value=state.room.name;state.room.members.forEach((m,i)=>f.elements["member"+(i+1)].value=m);
     }
+    function fillAssigneeChecks(selected=null){const picked=selected||state.room.members.map((_,i)=>i);$("assigneeChecks").innerHTML=state.room.members.map((m,i)=>'<label><input type="checkbox" name="assignee" value="'+i+'" '+(picked.includes(i)?"checked":"")+'>'+esc(m)+'</label>').join("")}
     function switchPanel(panel){activePanel=panel;const schedule=panel==="schedule";$("scheduleTab").classList.toggle("active",schedule);$("moneyTab").classList.toggle("active",!schedule);$("schedulePanel").classList.toggle("hidden",!schedule);$("moneyPanel").classList.toggle("hidden",schedule);}
 
     $("joinTab").onclick=()=>switchEntry("join");$("createTab").onclick=()=>switchEntry("create");
     $("joinForm").onsubmit=async e=>{e.preventDefault();busy(e.target,true);try{const f=new FormData(e.target);roomCode=String(f.get("code")).trim().toUpperCase();roomPin=String(f.get("pin"));const data=await rpc("get_ticket_room",{p_code:roomCode,p_pin:roomPin});localStorage.setItem("tt_room",roomCode);localStorage.setItem("tt_pin_"+roomCode,roomPin);history.replaceState({},"","?room="+roomCode);enterApp(data);}catch(x){showToast(x.message,true)}finally{busy(e.target,false)}};
     $("createForm").onsubmit=async e=>{e.preventDefault();busy(e.target,true);try{const f=new FormData(e.target),pin=String(f.get("pin")),members=[f.get("member1"),f.get("member2"),f.get("member3")];const data=await rpc("create_ticket_room",{p_room_name:f.get("roomName"),p_members:members,p_pin:pin});roomCode=data.room.code;roomPin=pin;localStorage.setItem("tt_room",roomCode);localStorage.setItem("tt_pin_"+roomCode,roomPin);history.replaceState({},"","?room="+roomCode);enterApp(data);showToast("群組已建立，分享邀請碼與密碼即可一起使用");}catch(x){showToast(x.message,true)}finally{busy(e.target,false)}};
-    $("eventForm").onsubmit=async e=>{e.preventDefault();busy(e.target,true);try{const f=new FormData(e.target),assignees=[...e.target.querySelectorAll('[name=assignee]:checked')].map(x=>Number(x.value));await mutate("save_event",{title:f.get("title"),saleAt:new Date(f.get("saleAt")).toISOString(),platform:f.get("platform"),url:f.get("url"),ticketCount:Number(f.get("ticketCount")),assignees,note:f.get("note")});e.target.reset();$("eventDialog").close();showToast("搶票行程已新增");}catch(x){showToast(x.message,true)}finally{busy(e.target,false)}};
+    $("eventForm").onsubmit=async e=>{e.preventDefault();busy(e.target,true);try{const f=new FormData(e.target),assignees=[...e.target.querySelectorAll('[name=assignee]:checked')].map(x=>Number(x.value)),editing=editingEventId;await mutate(editing?"update_event":"save_event",{id:editing,title:f.get("title"),saleAt:new Date(f.get("saleAt")).toISOString(),platform:f.get("platform"),url:f.get("url"),ticketCount:Number(f.get("ticketCount")),remindBefore:Number(f.get("remindBefore")),assignees,note:f.get("note")});e.target.reset();editingEventId=null;$("eventDialog").close();startNotifications();showToast(editing?"搶票行程已更新":"搶票行程已新增");}catch(x){showToast(x.message,true)}finally{busy(e.target,false)}};
     $("debtForm").onsubmit=async e=>{e.preventDefault();busy(e.target,true);try{const f=new FormData(e.target),debtor=Number(f.get("debtor")),creditor=Number(f.get("creditor"));if(debtor===creditor)throw new Error("欠款人與代墊人不能相同");await mutate("save_debt",{debtorIndex:debtor,creditorIndex:creditor,amount:Number(f.get("amount")),eventId:f.get("eventId")||null,note:f.get("note")});e.target.reset();$("debtDialog").close();showToast("代墊紀錄已新增");}catch(x){showToast(x.message,true)}finally{busy(e.target,false)}};
     $("settingsForm").onsubmit=async e=>{e.preventDefault();busy(e.target,true);try{const f=new FormData(e.target);await mutate("update_room",{roomName:f.get("roomName"),members:[f.get("member1"),f.get("member2"),f.get("member3")]});$("settingsDialog").close();showToast("群組資料已更新");}catch(x){showToast(x.message,true)}finally{busy(e.target,false)}};
-    $("appView").onclick=async e=>{const b=e.target.closest("[data-action]");if(!b)return;const a=b.dataset.action,id=b.dataset.id;if(a==="open-event")$("eventDialog").showModal();if(a==="open-debt")$("debtDialog").showModal();if(a==="delete-event"&&confirm("確定刪除這個搶票行程？"))try{await mutate("delete_event",{id});showToast("行程已刪除")}catch(x){showToast(x.message,true)}if(a==="delete-debt"&&confirm("確定刪除這筆代墊紀錄？"))try{await mutate("delete_debt",{id});showToast("紀錄已刪除")}catch(x){showToast(x.message,true)}};
+    $("appView").onclick=async e=>{const b=e.target.closest("[data-action]");if(!b)return;const a=b.dataset.action,id=b.dataset.id;if(a==="open-event")openEventDialog();if(a==="edit-event")openEventDialog(state.events.find(x=>x.id===id));if(a==="open-debt")$("debtDialog").showModal();if(a==="delete-event"&&confirm("確定刪除這個搶票行程？"))try{await mutate("delete_event",{id});showToast("行程已刪除")}catch(x){showToast(x.message,true)}if(a==="delete-debt"&&confirm("確定刪除這筆代墊紀錄？"))try{await mutate("delete_debt",{id});showToast("紀錄已刪除")}catch(x){showToast(x.message,true)}};
     $("appView").onchange=async e=>{if(e.target.dataset.action==="toggle-debt")try{await mutate("toggle_debt",{id:e.target.dataset.id,settled:e.target.checked});showToast(e.target.checked?"已標記為付清":"已改為未付款")}catch(x){showToast(x.message,true)}};
     document.querySelectorAll("[data-close]").forEach(b=>b.onclick=()=>$(b.dataset.close).close());
-    $("addEventBtn").onclick=()=>$("eventDialog").showModal();$("addDebtBtn").onclick=()=>$("debtDialog").showModal();$("settingsBtn").onclick=()=>$("settingsDialog").showModal();$("refreshBtn").onclick=()=>refresh();$("scheduleTab").onclick=()=>switchPanel("schedule");$("moneyTab").onclick=()=>switchPanel("money");
+    $("addEventBtn").onclick=()=>openEventDialog();$("addDebtBtn").onclick=()=>$("debtDialog").showModal();$("settingsBtn").onclick=()=>$("settingsDialog").showModal();$("notificationBtn").onclick=requestNotifications;$("refreshBtn").onclick=()=>refresh();$("scheduleTab").onclick=()=>switchPanel("schedule");$("moneyTab").onclick=()=>switchPanel("money");
     $("copyInvite").onclick=()=>navigator.clipboard.writeText(location.origin+location.pathname+"?room="+roomCode+"\n邀請碼："+roomCode).then(()=>showToast("邀請連結已複製"));
     $("leaveBtn").onclick=()=>{if(!confirm("要從這台裝置移除已記住的邀請碼與密碼嗎？"))return;localStorage.removeItem("tt_room");localStorage.removeItem("tt_pin_"+roomCode);location.href=location.pathname};
 
@@ -220,7 +245,7 @@
     $("configForm").onsubmit=async e=>{e.preventDefault();const url=$("configUrl").value.trim().replace(/\/$/,""),key=$("configKey").value.trim();if(!/^https:\/\/.+\.supabase\.co$/.test(url))return showToast("Project URL 格式不正確",true);if(!(key.startsWith("sb_publishable_")||key.startsWith("eyJ")))return showToast("請填入 Publishable key",true);try{let source=await fetch(location.href.split("?")[0],{cache:"no-store"}).then(r=>r.text());const mu="%%"+"SUPABASE_URL"+"%%",mk="%%"+"SUPABASE_PUBLISHABLE_KEY"+"%%";source=source.split(mu).join(url).split(mk).join(key);const blob=new Blob([source],{type:"text/html;charset=utf-8"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="index.html";a.click();URL.revokeObjectURL(a.href);showToast("已下載設定完成的 index.html");}catch(x){showToast("請先把檔案放到 GitHub Pages，再使用下載功能",true)}};
 
     (async function init(){
-      const configured=apiUrl&&apiKey;
+      updateNotificationButton();const configured=apiUrl&&apiKey;
       if(!configured){$("setupView").classList.remove("hidden");return}
       $("entryView").classList.remove("hidden");
       const query=new URLSearchParams(location.search).get("room");if(query)roomCode=query.toUpperCase();
