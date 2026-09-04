@@ -265,7 +265,7 @@
     function emptyCard(icon,title,text){return '<div class="empty"><i>'+icon+'</i><h3>'+title+'</h3><p>'+text+'</p></div>'}
     function eventCard(e,kind,members){
       const sale=new Date(e.saleAt),displayDate=kind==="won"&&e.performanceAt?new Date(e.performanceAt):sale,safe=/^https?:\/\//i.test(e.url||"")?e.url:"",status=kind==="won"?"已搶到":kind==="expired"?"已過期":"待搶";
-      const holiday=isHoliday(e.performanceAt||e.saleAt);
+      const holiday=isHoliday(e.saleAt);
       const reminder=Number(e.remindBefore||0)?" · 提前 "+(Number(e.remindBefore)===1440?"1 天":e.remindBefore+" 分鐘")+"通知":" · 開賣時通知";
       const details=['<strong>演出：</strong>'+(e.performanceAt?esc(formatDate(e.performanceAt)):"尚未填寫")];
       if(kind==="won"){const pickupDays=Number(e.pickupDaysBefore||0),pickupText=pickupDays?"開演前 "+pickupDays+" 天"+(e.pickupAt?"（"+formatDate(e.pickupAt)+"）":""):"未設定";details.push('<strong>可領票：</strong>'+esc(pickupText),'<strong>領票號碼：</strong>'+esc(e.pickupCode||"未設定"),'<strong>領票通知：</strong>'+(e.pickupNotify?"會通知（當日中午 12:00）":"不通知"))}
