@@ -104,8 +104,8 @@
         <div class="hero"><p class="eyebrow">◷ NEXT DROP</p><h2 id="nextTitle"></h2><p class="time" id="nextTime"></p><div class="countdown"><span>距離開賣</span><strong id="countdown"></strong></div></div>
         <div class="stats"><div><span>待搶場次</span><strong id="eventCount">0</strong></div><div><span>未結清代墊</span><strong id="outstanding">$0</strong></div></div>
       </section>
-      <nav class="navtabs"><button id="scheduleTab" class="active">▣　搶票行程</button><button id="expiredTab">◷　已過期</button><button id="wonTab">✓　已搶到門票</button><button id="purchasesTab">▧　代購紀錄</button><button id="moneyTab">▤　代墊結算</button></nav>
-      <section id="purchasesPanel" class="panel hidden"><div class="heading"><div><p class="eyebrow">PURCHASES</p><h2>代購紀錄</h2></div><button id="addPurchaseBtn" class="btn hot" type="button">＋ 新增代購</button></div><p class="note">上傳截圖、選擇幫誰買，再填寫金額。這裡的紀錄不會自動加入代墊結算。</p><div class="heading"><span id="purchaseStatus" role="status"></span><button id="refreshPurchases" class="btn" type="button">重新整理</button></div><div id="purchaseList" class="list"></div></section>
+      <nav class="navtabs"><button id="scheduleTab" class="active">▣　搶票行程</button><button id="expiredTab">◷　已過期</button><button id="wonTab">✓　已搶到門票</button><button id="moneyTab">▤　演唱會代墊結算</button><button id="purchasesTab">▧　代購紀錄</button></nav>
+      <section id="purchasesPanel" class="panel hidden"><div class="heading"><div><p class="eyebrow">PURCHASES</p><h2>代購紀錄</h2></div><button id="addPurchaseBtn" class="btn hot" type="button">＋ 新增代購</button></div><p class="note">上傳截圖，選擇誰幫誰買，再填寫金額。代購款在下方獨立結算。</p><div class="heading"><span id="purchaseStatus" role="status"></span><button id="refreshPurchases" class="btn" type="button">重新整理</button></div><div id="purchaseList" class="list"></div><h2 class="purchase-settlement-heading">代購結算</h2><p class="note">依幣別分開計算，互相代購的款項會抵銷；標記已收款的紀錄不再計入。</p><div id="purchaseSettlement" class="settle"></div></section>
       <section id="schedulePanel" class="panel">
         <div class="heading"><div><p class="eyebrow">SALE SCHEDULE</p><h2>搶票行程</h2></div><button id="addEventBtn" class="btn hot">＋ 新增場次</button></div>
         <div id="eventList" class="list"></div>
@@ -119,7 +119,7 @@
         <div id="wonEventList" class="list"></div>
       </section>
       <section id="moneyPanel" class="panel hidden">
-        <div class="heading"><div><p class="eyebrow">SETTLEMENT</p><h2>誰該付誰</h2></div><button id="addDebtBtn" class="btn hot">＋ 新增代墊</button></div>
+        <div class="heading"><div><p class="eyebrow">SETTLEMENT</p><h2>演唱會代墊結算</h2></div><button id="addDebtBtn" class="btn hot">＋ 新增代墊</button></div>
         <section class="settle"><div class="settle-title"><i>🤝</i><div><b>建議結算</b><small>已將互相欠款自動抵銷</small></div></div><div id="settlement"></div></section>
         <div id="debtList" class="list"></div>
       </section>
@@ -175,10 +175,10 @@
     </form>
   </dialog>
 
-  <dialog id="purchaseDialog"><h2 id="purchaseDialogTitle">新增代購</h2><form id="purchaseForm"><label class="field">商品截圖<input name="screenshot" type="file" accept="image/png,image/jpeg,image/webp"></label><img id="purchasePreview" class="purchase-preview" alt="截圖預覽" hidden><label class="field">商品名稱<input name="title" maxlength="80" required></label><label class="field">幫誰買<select name="recipient" required></select></label><div class="grid2"><label class="field">金額<input name="amount" type="number" min="0.01" max="99999999" step="0.01" required></label><label class="field">幣別<select name="currency"><option value="TWD">新台幣 TWD</option><option value="JPY">日圓 JPY</option></select></label></div><label class="field">備註<textarea name="note" maxlength="500" placeholder="尺寸、顏色、數量等"></textarea></label><div class="dialog-actions"><button id="closePurchase" class="btn" type="button">取消</button><button id="savePurchase" class="btn hot">儲存代購</button></div></form></dialog>
+  <dialog id="purchaseDialog"><h2 id="purchaseDialogTitle">新增代購</h2><form id="purchaseForm"><label class="field">商品截圖<input name="screenshot" type="file" accept="image/png,image/jpeg,image/webp"></label><img id="purchasePreview" class="purchase-preview" alt="截圖預覽" hidden><label class="field">商品名稱<input name="title" maxlength="80" required></label><div class="grid2"><label class="field">誰幫忙買（收款人）<select name="payer" required></select></label><label class="field">幫誰買（付款人）<select name="recipient" required></select></label></div><div class="grid2"><label class="field">金額<input name="amount" type="number" min="0.01" max="99999999" step="0.01" required></label><label class="field">幣別<select name="currency"><option value="TWD">新台幣 TWD</option><option value="JPY">日圓 JPY</option></select></label></div><label class="field">備註<textarea name="note" maxlength="500" placeholder="尺寸、顏色、數量等"></textarea></label><div class="dialog-actions"><button id="closePurchase" class="btn" type="button">取消</button><button id="savePurchase" class="btn hot">儲存代購</button></div></form></dialog>
   <dialog id="purchaseImageDialog"><button id="closePurchaseImage" class="btn" type="button">關閉圖片</button><img id="purchaseFullImage" alt="代購截圖大圖"></dialog>
-  <link rel="stylesheet" href="purchases.css?v=20261104">
-  <script src="purchases.js?v=20261104"></script>
+  <link rel="stylesheet" href="purchases.css?v=20261104-settlement">
+  <script src="purchases.js?v=20261104-settlement"></script>
   <script>
     const EMBEDDED_URL = "https://iykqldpzciqelmrjzlng.supabase.co";
     const EMBEDDED_KEY = "sb_publishable_hgxM-twdEVzZRztE78Tpqw_rqMnwVL2";
@@ -343,7 +343,7 @@
     $("testConfig").onclick=async()=>{const url=$("configUrl").value.trim(),key=$("configKey").value.trim();try{await rpc("get_ticket_room",{p_code:"TEST00",p_pin:roomPin},url,key)}catch(e){if(/邀請碼/.test(e.message)){localStorage.setItem("tt_supabase_url",url);localStorage.setItem("tt_supabase_key",key);showToast("連線成功");return}showToast("尚未連線："+e.message,true)}};
     $("configForm").onsubmit=async e=>{e.preventDefault();const url=$("configUrl").value.trim().replace(/\/$/,""),key=$("configKey").value.trim();if(!/^https:\/\/.+\.supabase\.co$/.test(url))return showToast("Project URL 格式不正確",true);if(!(key.startsWith("sb_publishable_")||key.startsWith("eyJ")))return showToast("請填入 Publishable key",true);try{let source=await fetch(location.href.split("?")[0],{cache:"no-store"}).then(r=>r.text());const mu="%%"+"SUPABASE_URL"+"%%",mk="%%"+"SUPABASE_PUBLISHABLE_KEY"+"%%";source=source.split(mu).join(url).split(mk).join(key);const blob=new Blob([source],{type:"text/html;charset=utf-8"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="index.html";a.click();URL.revokeObjectURL(a.href);showToast("已下載設定完成的 index.html");}catch(x){showToast("請先把檔案放到 GitHub Pages，再使用下載功能",true)}};
 
-    ConcertPurchases.init({rpc:(name,args)=>rpc(name,{p_code:roomCode,p_pin:roomPin,...args}),members:()=>state?.room.members,room:()=>roomCode,toast:showToast});
+    ConcertPurchases.init({rpc:(name,args)=>rpc(name,{p_code:roomCode,p_pin:roomPin,...args}),members:()=>state?.room.members,me:()=>localStorage.getItem("tt_member_name_"+roomCode),room:()=>roomCode,toast:showToast});
     $("purchasesTab").onclick=()=>switchPanel("purchases");
     (async function init(){
       initHourSelects();if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});updateNotificationButton();const configured=apiUrl&&apiKey;
