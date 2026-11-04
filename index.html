@@ -104,7 +104,8 @@
         <div class="hero"><p class="eyebrow">◷ NEXT DROP</p><h2 id="nextTitle"></h2><p class="time" id="nextTime"></p><div class="countdown"><span>距離開賣</span><strong id="countdown"></strong></div></div>
         <div class="stats"><div><span>待搶場次</span><strong id="eventCount">0</strong></div><div><span>未結清代墊</span><strong id="outstanding">$0</strong></div></div>
       </section>
-      <nav class="navtabs"><button id="scheduleTab" class="active">▣　搶票行程</button><button id="expiredTab">◷　已過期</button><button id="wonTab">✓　已搶到門票</button><button id="moneyTab">▤　代墊結算</button></nav>
+      <nav class="navtabs"><button id="scheduleTab" class="active">▣　搶票行程</button><button id="expiredTab">◷　已過期</button><button id="wonTab">✓　已搶到門票</button><button id="purchasesTab">▧　代購紀錄</button><button id="moneyTab">▤　代墊結算</button></nav>
+      <section id="purchasesPanel" class="panel hidden"><div class="heading"><div><p class="eyebrow">PURCHASES</p><h2>代購紀錄</h2></div><button id="addPurchaseBtn" class="btn hot" type="button">＋ 新增代購</button></div><p class="note">上傳截圖、選擇幫誰買，再填寫金額。這裡的紀錄不會自動加入代墊結算。</p><div class="heading"><span id="purchaseStatus" role="status"></span><button id="refreshPurchases" class="btn" type="button">重新整理</button></div><div id="purchaseList" class="list"></div></section>
       <section id="schedulePanel" class="panel">
         <div class="heading"><div><p class="eyebrow">SALE SCHEDULE</p><h2>搶票行程</h2></div><button id="addEventBtn" class="btn hot">＋ 新增場次</button></div>
         <div id="eventList" class="list"></div>
@@ -145,8 +146,9 @@
   <dialog id="ticketDialog"><h2>已搶到門票</h2><p class="desc" id="ticketEventName">填寫門票與領票資料。</p>
     <form id="ticketForm">
       <label class="field">演出日期／時間<div class="time-parts"><input name="performanceDate" type="date" required><select name="performanceHour" data-hour aria-label="演出小時"></select><select name="performanceMinute" aria-label="演出分鐘"><option>00</option><option>15</option><option>30</option><option>45</option></select></div></label>
-      <label class="field">可領票日期（與領票號碼至少填一項）<select name="pickupDaysBefore"><option value="">不設定</option><option value="1">開演前 1 天</option><option value="2">開演前 2 天</option><option value="3">開演前 3 天</option><option value="4">開演前 4 天</option><option value="5">開演前 5 天</option><option value="6">開演前 6 天</option><option value="7">開演前 7 天</option></select></label>
-      <label class="field">領票號碼（與可領票日期至少填一項）<input name="pickupCode" maxlength="120" placeholder="可填一組或多組領票號碼"></label>
+      <p class="note">日期與號碼可以同時填寫，也可以先填其中一項；兩欄都填時會一起儲存。</p>
+      <label class="field">可領票日期<select name="pickupDaysBefore"><option value="">暫不設定日期</option><option value="1">開演前 1 天</option><option value="2">開演前 2 天</option><option value="3">開演前 3 天</option><option value="4">開演前 4 天</option><option value="5">開演前 5 天</option><option value="6">開演前 6 天</option><option value="7">開演前 7 天</option></select></label>
+      <label class="field">領票號碼<input name="pickupCode" maxlength="120" placeholder="可填一組或多組；不影響上方日期設定"></label>
       <label class="check-option"><input name="pickupNotify" type="checkbox">需要領票通知</label>
       <p class="note">若開啟通知，系統會在可領票當日中午 12:00 發出通知。</p>
       <div class="dialog-actions"><button class="btn" type="button" data-close="ticketDialog">取消</button><button class="btn hot">儲存門票資料</button></div>
@@ -173,6 +175,10 @@
     </form>
   </dialog>
 
+  <dialog id="purchaseDialog"><h2 id="purchaseDialogTitle">新增代購</h2><form id="purchaseForm"><label class="field">商品截圖<input name="screenshot" type="file" accept="image/png,image/jpeg,image/webp"></label><img id="purchasePreview" class="purchase-preview" alt="截圖預覽" hidden><label class="field">商品名稱<input name="title" maxlength="80" required></label><label class="field">幫誰買<select name="recipient" required></select></label><div class="grid2"><label class="field">金額<input name="amount" type="number" min="0.01" max="99999999" step="0.01" required></label><label class="field">幣別<select name="currency"><option value="TWD">新台幣 TWD</option><option value="JPY">日圓 JPY</option></select></label></div><label class="field">備註<textarea name="note" maxlength="500" placeholder="尺寸、顏色、數量等"></textarea></label><div class="dialog-actions"><button id="closePurchase" class="btn" type="button">取消</button><button id="savePurchase" class="btn hot">儲存代購</button></div></form></dialog>
+  <dialog id="purchaseImageDialog"><button id="closePurchaseImage" class="btn" type="button">關閉圖片</button><img id="purchaseFullImage" alt="代購截圖大圖"></dialog>
+  <link rel="stylesheet" href="purchases.css?v=20261104">
+  <script src="purchases.js?v=20261104"></script>
   <script>
     const EMBEDDED_URL = "https://iykqldpzciqelmrjzlng.supabase.co";
     const EMBEDDED_KEY = "sb_publishable_hgxM-twdEVzZRztE78Tpqw_rqMnwVL2";
@@ -216,7 +222,7 @@
       $("eventDialog").showModal();
     }
     function openTicketDialog(event){
-      editingTicketId=event.id;const form=$("ticketForm");form.reset();$("ticketEventName").textContent=event.title+"｜可領票日期、領票號碼至少填一項。";writeDateTime(form,"performance",event.performanceAt);form.elements.pickupCode.value=event.pickupCode||"";form.elements.pickupDaysBefore.value=String(inferPickupDays(event));form.elements.pickupNotify.checked=Boolean(event.pickupNotify);$("ticketDialog").showModal();
+      editingTicketId=event.id;const form=$("ticketForm");form.reset();$("ticketEventName").textContent=event.title+"｜日期與號碼可同時設定，至少填一項。";writeDateTime(form,"performance",event.performanceAt);form.elements.pickupCode.value=event.pickupCode||"";form.elements.pickupDaysBefore.value=String(inferPickupDays(event));form.elements.pickupNotify.checked=Boolean(event.pickupNotify);$("ticketDialog").showModal();
     }
 
     async function rpc(name,args,url=apiUrl,key=apiKey){
@@ -268,7 +274,7 @@
       const holiday=isHoliday(e.saleAt);
       const reminder=Number(e.remindBefore||0)?" · 提前 "+(Number(e.remindBefore)===1440?"1 天":e.remindBefore+" 分鐘")+"通知":" · 開賣時通知";
       const details=['<strong>演出：</strong>'+(e.performanceAt?esc(formatDate(e.performanceAt)):"尚未填寫")];
-      if(kind==="won"){const pickupDays=Number(e.pickupDaysBefore||0),pickupText=pickupDays?"開演前 "+pickupDays+" 天"+(e.pickupAt?"（"+formatDate(e.pickupAt)+"）":""):"未設定";details.push('<strong>可領票：</strong>'+esc(pickupText),'<strong>領票號碼：</strong>'+esc(e.pickupCode||"未設定"),'<strong>領票通知：</strong>'+(e.pickupNotify?"會通知（當日中午 12:00）":"不通知"))}
+      if(kind==="won"){const pickupDays=Number(inferPickupDays(e)||0),pickupText=pickupDays?"開演前 "+pickupDays+" 天"+(e.pickupAt?"（"+formatDate(e.pickupAt)+"）":""):"未設定";details.push('<strong>可領票：</strong>'+esc(pickupText),'<strong>領票號碼：</strong>'+esc(e.pickupCode||"未設定"),'<strong>領票通知：</strong>'+(e.pickupNotify?"會通知（當日中午 12:00）":"不通知"))}
       let actions=(safe?'<a class="btn" href="'+esc(safe)+'" target="_blank" rel="noreferrer">售票頁 ↗</a> ':"");
       if(kind==="expired")actions+='<button class="btn hot" data-action="mark-won" data-id="'+esc(e.id)+'">已搶到門票</button> ';
       if(kind==="won")actions+='<button class="btn" data-action="edit-ticket" data-id="'+esc(e.id)+'">門票資料</button> <button class="btn ghost" data-action="unmark-won" data-id="'+esc(e.id)+'">取消已搶到</button> ';
@@ -315,7 +321,7 @@
     function addMemberField(){const inputs=[...$("settingsMembers").querySelectorAll('[name="member"]')];if(inputs.length>=20)return showToast("群組最多 20 人",true);$("settingsMembers").insertAdjacentHTML("beforeend",'<div class="member-row"><span>'+(inputs.length+1)+'</span><input name="member" maxlength="12" placeholder="新成員姓名" required><button class="btn ghost member-remove" type="button" data-remove-member="'+inputs.length+'">移除</button></div>');$("memberCount").textContent=(inputs.length+1)+" / 20 人";$("addMemberField").disabled=inputs.length+1>=20;$("settingsMembers").lastElementChild.querySelector("input").focus()}
     function renumberMemberFields(){const rows=[...$("settingsMembers").querySelectorAll(".member-row")];rows.forEach((row,i)=>{row.querySelector("span").textContent=i+1;row.querySelector("[data-remove-member]").dataset.removeMember=i});$("memberCount").textContent=rows.length+" / 20 人";$("addMemberField").disabled=rows.length>=20}
     function fillAssigneeChecks(selected=null){const picked=selected||state.room.members.map((_,i)=>i);$("assigneeChecks").innerHTML=state.room.members.map((m,i)=>'<label><input type="checkbox" name="assignee" value="'+i+'" '+(picked.includes(i)?"checked":"")+'>'+esc(m)+'</label>').join("")}
-    function switchPanel(panel){activePanel=panel;["schedule","expired","won","money"].forEach(name=>{$(name+"Tab").classList.toggle("active",panel===name);$(name+"Panel").classList.toggle("hidden",panel!==name)})}
+    function switchPanel(panel){activePanel=panel;["schedule","expired","won","purchases","money"].forEach(name=>{$(name+"Tab").classList.toggle("active",panel===name);$(name+"Panel").classList.toggle("hidden",panel!==name)});if(panel==="purchases")ConcertPurchases.show()}
 
     $("joinTab").onclick=()=>switchEntry("join");$("createTab").onclick=()=>switchEntry("create");
     $("joinForm").onsubmit=async e=>{e.preventDefault();busy(e.target,true);try{const f=new FormData(e.target),memberName=String(f.get("memberName")||"").trim();roomCode=String(f.get("code")).trim().toUpperCase();const data=await rpc("join_ticket_room",{p_code:roomCode,p_pin:roomPin,p_name:memberName});localStorage.setItem("tt_room",roomCode);localStorage.setItem("tt_member_name_"+roomCode,memberName);history.replaceState({},"","?room="+roomCode);enterApp(data);showToast("已用「"+memberName+"」加入群組");}catch(x){showToast(x.message,true)}finally{busy(e.target,false)}};
@@ -337,6 +343,8 @@
     $("testConfig").onclick=async()=>{const url=$("configUrl").value.trim(),key=$("configKey").value.trim();try{await rpc("get_ticket_room",{p_code:"TEST00",p_pin:roomPin},url,key)}catch(e){if(/邀請碼/.test(e.message)){localStorage.setItem("tt_supabase_url",url);localStorage.setItem("tt_supabase_key",key);showToast("連線成功");return}showToast("尚未連線："+e.message,true)}};
     $("configForm").onsubmit=async e=>{e.preventDefault();const url=$("configUrl").value.trim().replace(/\/$/,""),key=$("configKey").value.trim();if(!/^https:\/\/.+\.supabase\.co$/.test(url))return showToast("Project URL 格式不正確",true);if(!(key.startsWith("sb_publishable_")||key.startsWith("eyJ")))return showToast("請填入 Publishable key",true);try{let source=await fetch(location.href.split("?")[0],{cache:"no-store"}).then(r=>r.text());const mu="%%"+"SUPABASE_URL"+"%%",mk="%%"+"SUPABASE_PUBLISHABLE_KEY"+"%%";source=source.split(mu).join(url).split(mk).join(key);const blob=new Blob([source],{type:"text/html;charset=utf-8"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="index.html";a.click();URL.revokeObjectURL(a.href);showToast("已下載設定完成的 index.html");}catch(x){showToast("請先把檔案放到 GitHub Pages，再使用下載功能",true)}};
 
+    ConcertPurchases.init({rpc:(name,args)=>rpc(name,{p_code:roomCode,p_pin:roomPin,...args}),members:()=>state?.room.members,room:()=>roomCode,toast:showToast});
+    $("purchasesTab").onclick=()=>switchPanel("purchases");
     (async function init(){
       initHourSelects();if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});updateNotificationButton();const configured=apiUrl&&apiKey;
       if(!configured){$("setupView").classList.remove("hidden");return}
