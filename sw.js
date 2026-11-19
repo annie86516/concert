@@ -1,4 +1,4 @@
-const CACHE_NAME = "group-ticket-v12";
+const CACHE_NAME = "group-ticket-v13";
 const APP_FILES = ["./", "./index.html", "./purchases.js?v=20261104-settlement", "./purchases.css?v=20261104-settlement", "./manifest.webmanifest", "./icons/icon-192.png", "./icons/icon-512.png"];
 
 self.addEventListener("install", event => {
